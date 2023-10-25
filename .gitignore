@@ -1,0 +1,5 @@
+# Convienience batch programs.
+*.bat
+
+# Compiled class file
+*.class
