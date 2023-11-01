@@ -11,40 +11,70 @@ import java.io.File;  // Necessary to identify the file to read from.
 import java.util.Scanner; // Necessary to read files.
 import java.util.ArrayList; // Needed to have a mutable array to store addresses in.
 import java.util.Arrays; // Makes working with arrays easier.
-//import java.util.Queue; // Used for fully assoiative to keep track of last used addresses.
 
 public class CacheSim{
 	public static void main(String[] args){
 		
-		// Config
-		final int CACHE_BLOCK_SIZE = 8; // Block size of the cache.
-		final String ADDRESS_FILE_NAME = "AddressList.txt"; // Name of the file that contains the addresses to simulate reading.
+		// Variables
+		int cacheSize = 0, cacheBlockSize = 0, cacheLines = 0;
+		String addressFileName = "";
 		
-		// Set up cache.
-		int[] cache = new int[CACHE_BLOCK_SIZE];
+		// User input config.
+		try{
+			
+			// Generate console scanner.
+			Scanner consoleInput = new Scanner(System.in);
+			consoleInput.useDelimiter("\\s*\n\\s*");
+			
+			// Cache Size.
+			System.out.print("Cache Size: ");
+			cacheSize = consoleInput.nextInt();
+			
+			// Cache Block Size.
+			System.out.print("Cache Block Size: ");
+			cacheBlockSize = consoleInput.nextInt();
+			
+			// Address file name (to read addresses from).
+			System.out.print("Address file name: ");
+			addressFileName = consoleInput.next();
+			
+			// Close the console scanner.
+			consoleInput.close();
+			
+		}catch(Exception e){
+			
+			// Something went wrong.
+			System.out.println("Something went wrong while getting user input.");
+			System.out.println(e.toString());
+			System.exit(1);
+			
+		}
+		
+		// Set up cache[rows][cols].
+		cacheLines = cacheSize / cacheBlockSize;
+		int[][] cache = new int[cacheLines][cacheBlockSize];
 		
 		// Initilize cache.
-		Arrays.fill(cache, -1);
+		for(int[] row : cache)
+			Arrays.fill(row, -1);
 		
 		// Arraylist to store addresses in.
 		ArrayList<Integer> addressList = new ArrayList<Integer>();
 		
 		// Get addresses to read in simulation.
-		File addressFile = new File(ADDRESS_FILE_NAME);
+		File addressFile = new File(addressFileName);
 		if(addressFile.exists()){
 			try{
 				
 				// Open file.
 				Scanner addressFileScanner = new Scanner(addressFile);
 				
-				// Adjust for csv.
-				if(ADDRESS_FILE_NAME.endsWith(".csv"))
-					addressFileScanner.useDelimiter(",");
+				// Default radix (read in base 2).
+				addressFileScanner.useRadix(2);
 				
 				// Get contents.
-				while(addressFileScanner.hasNextInt()){
+				while(addressFileScanner.hasNext())
 					addressList.add( addressFileScanner.nextInt() );
-				}
 				
 				// Close file.
 				addressFileScanner.close();
@@ -60,48 +90,30 @@ public class CacheSim{
 		}else{
 			
 			// There was no file to read addresses from.
-			System.out.println('"'+ADDRESS_FILE_NAME+'"'+" does not exist, cannot read addresses.");
+			System.out.println('"'+addressFileName+'"'+" does not exist, cannot read addresses.");
 			System.exit(1);
 			
 		}
 		
-		// Boolean array to store hit/misses.
-		boolean[] hitMiss = new boolean[addressList.size()];
-		
-		// Array[row][col] to store the steps[block][step].
-		int[][] cacheSimSteps = new int[CACHE_BLOCK_SIZE][addressList.size()];
-		
-		// Array to store the mod values.
-		int[] mods = new int[addressList.size()];
-		
-		// Simulate reading the addresses and storing them in cache.
-		for(int step = 0; step < addressList.size(); step++){
-			
-			// The address in question.
-			int address = addressList.get(step);
-			
-			// Block number.
-			mods[step] = address % CACHE_BLOCK_SIZE;
-			
-			// Is hit or miss?
-			if(address == cache[mods[step]]) hitMiss[step] = true;
-			
-			// Record the address on miss.
-			else cache[mods[step]] = address;
-			
-			// Record the step.
-			for(int block = 0; block < CACHE_BLOCK_SIZE; block++)
-				cacheSimSteps[block][step] = cache[block];
-			
-		}
-		
 		// Print results.
-		System.out.println("Addresses, Mod, Hit, Blocks".replace(' ', ' '));
-		System.out.println(addressList.toString().replace(' ', '\t'));
-		System.out.println(Arrays.toString(mods).replace(' ', '\t'));
-		System.out.println(Arrays.toString(hitMiss).replace(' ', '\t'));
-		for(int[] row : cacheSimSteps)
-			System.out.println(Arrays.toString(row).replace(' ', '\t'));
+		System.out.println("Integer: ");
+		for(int i : addressList)
+			System.out.print(""+i+" ");
+		System.out.println('\n');
 		
+		System.out.println("Binary: ");
+		String tmp;
+		for(int i : addressList){
+			tmp = ("0000000"+Integer.toBinaryString(i)); // Change number of zeros.
+			System.out.println( tmp.substring(tmp.length()-7) ); // Length - # zeros.
+		}
+		System.out.println('\n');
 	}
 }
+
+/*
+for(int i : addressList){
+	tmp = ("0000000"+Integer.toBinaryString(i)); // Change number of zeros.
+	System.out.println( tmp.substring(tmp.length()-7) ); // Length - # zeros.
+}
+*/
