@@ -135,34 +135,31 @@ public class CacheSim{
 			// Figure out the current address.
 			int currentAddress = addressList.get(addressIndex);
 			
-			/* TODO: Figure this out at some point.
 			// Search for the address in the cache.
 			for(int cacheLevel = 0; cacheLevel < cacheBlockSize; cacheLevel++){
 				
-				// Mod the address to figure out what block it would be in.
-				int blockIndex = currentAddress % cacheBlocks;
-				
-				// Adjust the block based on what level of the cache is being searched.
-				blockIndex -= cacheLevel;
+				// Start with the current address, account for level of the cache we are on.
+				int blockIndex = currentAddress - cacheLevel;
 				
 				// Account for underflow.
-				if(blockIndex < 0){
-					blockIndex += Math.pow(2, addressLengthInBits); // Add the max possible address value.
-					blockIndex %= cacheBlocks; // Re-mod the address.
-				}
+				if(blockIndex < 0) blockIndex += Math.pow(2, addressLengthInBits); // Add the max possible address value.
+				
+				// Mod the address to see what block it belongs to.
+				blockIndex %= cacheBlocks;
 				
 				// Search the chosen index of the cache.
 				if(cache[blockIndex][cacheLevel] == currentAddress) hitMiss[addressIndex] = cacheLevel;
 				
 			}
-			*/
 			
-			// Search for address in cache.
-			for(int[] block : cache){
-				for(int i = 0; i < block.length; i++){
+			/* Old method used for verifying that my logic works.
+			// Search for address in cache by checking every address in the cache, highest level first then so on.
+			for(int i = 0; i < cacheBlockSize; i++){
+				for(int[] block : cache){
 					if(block[i] == currentAddress) hitMiss[addressIndex] = i;
 				}
 			}
+			*/
 			
 			// Load addresses into the cache on a miss.
 			if(hitMiss[addressIndex] == -1){
