@@ -15,31 +15,58 @@ import java.util.Arrays; // Makes working with arrays easier.
 public class CacheSim{
 	public static void main(String[] args){
 		
+		// Generate console scanner.
+		Scanner consoleInput = new Scanner(System.in);
+		consoleInput.useDelimiter("\\s*\n\\s*");
+		
 		// Variables
-		int cacheSize = 0, cacheBlockSize = 0, cacheLines = 0;
+		int cacheSize = 0, cacheBlockSize = 0, cacheBlocks = 0, addressLengthInBits = 0;
 		String addressFileName = "";
+		boolean verboseOutput = false;
+		File addressFile = new File("");
 		
 		// User input config.
 		try{
 			
-			// Generate console scanner.
-			Scanner consoleInput = new Scanner(System.in);
-			consoleInput.useDelimiter("\\s*\n\\s*");
-			
-			// Cache Size.
-			System.out.print("Cache Size: ");
+			// Get cache size, total addresses the cache can fit.
+			System.out.print("Cache size: ");
 			cacheSize = consoleInput.nextInt();
 			
-			// Cache Block Size.
-			System.out.print("Cache Block Size: ");
+			// Get cache block size, aka number of cache levels.
+			System.out.print("Cache block size: ");
 			cacheBlockSize = consoleInput.nextInt();
 			
-			// Address file name (to read addresses from).
-			System.out.print("Address file name: ");
-			addressFileName = consoleInput.next();
+			// Validate cache block size.
+			while(cacheSize % cacheBlockSize != 0 || cacheBlockSize > cacheSize){
+				if(cacheBlockSize > cacheSize){
+					System.out.println("Cache block size must be equal to or less than cache size.");
+					System.out.print("Cache block size: ");
+					cacheBlockSize = consoleInput.nextInt();
+				}else{
+					System.out.println("Cache block size must evenly divide cache size.");
+					System.out.print("Cache block size: ");
+					cacheBlockSize = consoleInput.nextInt();
+				}
+			}
 			
-			// Close the console scanner.
-			consoleInput.close();
+			// Get address file name, to read addresses from.
+			System.out.print("Address file name: ");
+			addressFile = new File(consoleInput.next());
+			
+			
+			// Validate address file name.
+			while(!addressFile.exists()){
+				System.out.println('"'+addressFile.toString()+'"'+" does not exist.");
+				System.out.print("Address file name: ");
+				addressFile = new File(consoleInput.next());
+			}
+			
+			// Get verbose output preference, aka show every step.
+			System.out.print("Verbose output (show every step) (y/n): ");
+			if(consoleInput.next().equalsIgnoreCase("y")) verboseOutput = true; // Else it was already set to false earlier.
+			
+			// Nice looking newline.
+			System.out.println();
 			
 		}catch(Exception e){
 			
@@ -50,64 +77,149 @@ public class CacheSim{
 			
 		}
 		
-		// Set up cache[rows][cols].
-		cacheLines = cacheSize / cacheBlockSize;
-		int[][] cache = new int[cacheLines][cacheBlockSize];
-		
-		// Initilize cache.
-		for(int[] row : cache)
-			Arrays.fill(row, -1);
-		
 		// Arraylist to store addresses in.
 		ArrayList<Integer> addressList = new ArrayList<Integer>();
 		
-		// Get addresses to read in simulation.
-		File addressFile = new File(addressFileName);
-		if(addressFile.exists()){
-			try{
-				
-				// Open file.
-				Scanner addressFileScanner = new Scanner(addressFile);
-				
-				// Default radix (read in base 2).
-				addressFileScanner.useRadix(2);
-				
-				// Get contents.
-				while(addressFileScanner.hasNext())
-					addressList.add( addressFileScanner.nextInt() );
-				
-				// Close file.
-				addressFileScanner.close();
-				
-			}catch(Exception e){
-				
-				// Something went wrong.
-				System.out.println("Something went wrong while reading addresses.");
-				System.out.println(e.toString());
-				System.exit(1);
-				
-			}
-		}else{
+		// Get addresses from file.
+		try{
 			
-			// There was no file to read addresses from.
-			System.out.println('"'+addressFileName+'"'+" does not exist, cannot read addresses.");
+			// Open file.
+			Scanner addressFileScanner = new Scanner(addressFile);
+			
+			// Default radix (read in base 2).
+			addressFileScanner.useRadix(2);
+			
+			// Get first value and get how many bits in an address.
+			if(addressFileScanner.hasNext()){
+				String tmpString = addressFileScanner.next();
+				addressLengthInBits = tmpString.length();
+				addressList.add(Integer.parseInt(tmpString, 2));
+			}
+			
+			// Get contents.
+			while(addressFileScanner.hasNext()) addressList.add( addressFileScanner.nextInt() );
+			
+			// Close file.
+			addressFileScanner.close();
+			
+		}catch(Exception e){
+			
+			// Something went wrong while reading addresses.
+			System.out.println("Something went wrong while reading addresses.");
+			System.out.println(e.toString());
 			System.exit(1);
 			
 		}
 		
-		// Print results.
-		System.out.println("Integer: ");
-		for(int i : addressList)
-			System.out.print(""+i+" ");
-		System.out.println('\n');
+		// ---------- Cache Simulation -----------
 		
-		System.out.println("Binary: ");
-		String tmp;
-		for(int i : addressList){
-			tmp = ("0000000"+Integer.toBinaryString(i)); // Change number of zeros.
-			System.out.println( tmp.substring(tmp.length()-7) ); // Length - # zeros.
+		// Create cache[rows][cols] aka cache[Block][Level].
+		cacheBlocks = cacheSize / cacheBlockSize;
+		int[][] cache = new int[cacheBlocks][cacheBlockSize];
+		
+		// Initilize cache, -1 means empty cell.
+		for(int[] row : cache) Arrays.fill(row, -1);
+		
+		// Create hit/miss array, -1 means miss, 0 means found in first level and so on.
+		int[] hitMiss = new int[addressList.size()];
+		
+		// Initilize hit/miss array.
+		Arrays.fill(hitMiss, -1);
+		
+		// DEBUG: Need this in case of verbose printing.
+		consoleInput.nextLine();
+		
+		// Loop for every address in address list.
+		for(int addressIndex = 0; addressIndex < addressList.size(); addressIndex++){
+			
+			// Figure out the current address.
+			int currentAddress = addressList.get(addressIndex);
+			
+			/* TODO: Figure this out at some point.
+			// Search for the address in the cache.
+			for(int cacheLevel = 0; cacheLevel < cacheBlockSize; cacheLevel++){
+				
+				// Mod the address to figure out what block it would be in.
+				int blockIndex = currentAddress % cacheBlocks;
+				
+				// Adjust the block based on what level of the cache is being searched.
+				blockIndex -= cacheLevel;
+				
+				// Account for underflow.
+				if(blockIndex < 0){
+					blockIndex += Math.pow(2, addressLengthInBits); // Add the max possible address value.
+					blockIndex %= cacheBlocks; // Re-mod the address.
+				}
+				
+				// Search the chosen index of the cache.
+				if(cache[blockIndex][cacheLevel] == currentAddress) hitMiss[addressIndex] = cacheLevel;
+				
+			}
+			*/
+			
+			// Search for address in cache.
+			for(int[] block : cache){
+				for(int i = 0; i < block.length; i++){
+					if(block[i] == currentAddress) hitMiss[addressIndex] = i;
+				}
+			}
+			
+			// Load addresses into the cache on a miss.
+			if(hitMiss[addressIndex] == -1){
+				for(int cacheLevel = 0; cacheLevel < cacheBlockSize; cacheLevel++){
+					
+					// Mod the address to figure out what block it would be in.
+					int blockIndex = currentAddress % cacheBlocks;
+					
+					// Prepare the address to save in the cache.
+					int addressToSave = currentAddress + cacheLevel;
+					
+					// Account for overflow.
+					addressToSave %= Math.pow(2, addressLengthInBits);
+					
+					// Save to chosen cache cell.
+					cache[blockIndex][cacheLevel] = addressToSave;
+					
+				}
+			}
+			
+			// Verbose printing.
+			if(verboseOutput){
+				
+				// Print this step.
+				System.out.println("Current address: "+currentAddress+" - "+((hitMiss[addressIndex] == -1)? "miss" : "hit on level " + hitMiss[addressIndex]));
+				System.out.println("Cache after processing:");
+				for(int[] row : cache) System.out.println( Arrays.toString( row ) );
+				
+				// Wait for acknowledgement to continue.
+				consoleInput.nextLine();
+				
+			}
 		}
-		System.out.println('\n');
+		
+		// Tally results.
+		int totalHits = 0;
+		int[] hitsOnLayer = new int[cacheBlockSize];
+		for(int result : hitMiss){
+			if(result != -1){
+				totalHits++;
+				hitsOnLayer[result]++;
+			}
+		}
+		
+		// Print results.
+		System.out.println("Total Hits: "+totalHits+" out of "+addressList.size()+" addresses.");
+		
+		System.out.println("Hits by level");
+		System.out.print("Level:[0");
+		for(int i = 1; i < cacheBlockSize; i++) System.out.print(", "+i);
+		System.out.println(']');
+		System.out.println("Hits: "+Arrays.toString(hitsOnLayer));
+		
+		System.out.println("Bits per address: "+addressLengthInBits);
+		
+		// Close the console scanner.
+		consoleInput.close();
 	}
 }
 
