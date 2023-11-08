@@ -22,7 +22,7 @@ public class CacheSim{
 		// Variables
 		int cacheSize = 0, cacheBlockSize = 0, cacheBlocks = 0, addressLengthInBits = 0;
 		String addressFileName = "";
-		boolean verboseOutput = false;
+		boolean verboseOutput = false, binaryOutput = false;
 		File addressFile = new File("");
 		
 		// User input config.
@@ -64,6 +64,12 @@ public class CacheSim{
 			// Get verbose output preference, aka show every step.
 			System.out.print("Verbose output (show every step) (y/n): ");
 			if(consoleInput.next().equalsIgnoreCase("y")) verboseOutput = true; // Else it was already set to false earlier.
+			
+			// Get binary output preference, aka show every step in binary (only asks if verbose output preferred).
+			if(verboseOutput){
+				System.out.print("Binary output (y/n): ");
+				if(consoleInput.next().equalsIgnoreCase("y")) binaryOutput = true; // Else it was already set to false earlier.
+			}
 			
 			// Nice looking newline.
 			System.out.println();
@@ -183,10 +189,40 @@ public class CacheSim{
 			// Verbose printing.
 			if(verboseOutput){
 				
-				// Print this step.
-				System.out.println("Current address: "+currentAddress+" - "+((hitMiss[addressIndex] == -1)? "miss" : "hit on level " + hitMiss[addressIndex]));
-				System.out.println("Cache after processing:");
-				for(int[] row : cache) System.out.println( Arrays.toString( row ) );
+				// Print this step based on binary output preference.
+				if(binaryOutput){
+					
+					// Convert to binary equivalents.
+					String currentAddressInBinary = Integer.toBinaryString(currentAddress);
+					
+					// Convert entire cache to binary.
+					String[][] currentCacheInBinary = new String[cacheBlocks][cacheBlockSize];
+					for(int i = 0; i < cacheBlocks; i++) for(int j = 0; j < cacheBlockSize; j++) currentCacheInBinary[i][j] = Integer.toBinaryString( cache[i][j] );
+					
+					// Create custom padding for binary representation.
+					char[] zeroPaddingChars = new char[addressLengthInBits];
+					Arrays.fill(zeroPaddingChars, '0');
+					String zeroPadding = new String(zeroPaddingChars);
+					
+					// Add padding to binary strings to ensure number of characters match number of bits from the file.
+					currentAddressInBinary = zeroPadding + currentAddressInBinary;
+					for(int i = 0; i < cacheBlocks; i++) for(int j = 0; j < cacheBlockSize; j++) currentCacheInBinary[i][j] = zeroPadding + currentCacheInBinary[i][j];
+					
+					// Trim strings so that the number of bits remains the same.
+					currentAddressInBinary = currentAddressInBinary.substring( currentAddressInBinary.length()-addressLengthInBits );
+					for(int i = 0; i < cacheBlocks; i++) for(int j = 0; j < cacheBlockSize; j++) currentCacheInBinary[i][j] = currentCacheInBinary[i][j].substring( currentCacheInBinary[i][j].length()-addressLengthInBits );
+					
+					// Finally print.
+					System.out.println("Current address: "+currentAddressInBinary+" - "+((hitMiss[addressIndex] == -1)? "miss" : "hit on level " + hitMiss[addressIndex]));
+					System.out.println("Cache after processing:");
+					for(String[] row : currentCacheInBinary) System.out.println( Arrays.toString( row ) );
+					
+				}else{
+					// Stright up print those glorious integers instead.
+					System.out.println("Current address: "+currentAddress+" - "+((hitMiss[addressIndex] == -1)? "miss" : "hit on level " + hitMiss[addressIndex]));
+					System.out.println("Cache after processing:");
+					for(int[] row : cache) System.out.println( Arrays.toString( row ) );
+				}
 				
 				// Wait for acknowledgement to continue.
 				consoleInput.nextLine();
@@ -222,7 +258,7 @@ public class CacheSim{
 
 /*
 for(int i : addressList){
-	tmp = ("0000000"+Integer.toBinaryString(i)); // Change number of zeros.
-	System.out.println( tmp.substring(tmp.length()-7) ); // Length - # zeros.
+	tmp = ("000000000000"+Integer.toBinaryString(i)); // Change number of zeros.
+	System.out.println( tmp.substring(tmp.length()-addressLengthInBits) ); // Length - # zeros.
 }
 */
