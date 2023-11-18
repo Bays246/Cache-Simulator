@@ -36,7 +36,7 @@ public class CacheSim{
 			System.out.print("Cache block size: ");
 			cacheBlockSize = consoleInput.nextInt();
 			
-			// Validate cache block size.
+			// Validate cache block size (must evenly divide cache size and must be equal to or less than cache size).
 			while(cacheSize % cacheBlockSize != 0 || cacheBlockSize > cacheSize){
 				if(cacheBlockSize > cacheSize){
 					System.out.println("Cache block size must be equal to or less than cache size.");
@@ -102,7 +102,7 @@ public class CacheSim{
 				addressList.add(Integer.parseInt(tmpString, 2));
 			}
 			
-			// Get contents.
+			// Get rest of the addresses.
 			while(addressFileScanner.hasNext()) addressList.add( addressFileScanner.nextInt() );
 			
 			// Close file.
@@ -158,7 +158,7 @@ public class CacheSim{
 				
 			}
 			
-			/* Old method used for verifying that my logic works.
+			/* Old method that would search the ENTIRE cache for every address.
 			// Search for address in cache by checking every address in the cache, highest level first then so on.
 			for(int i = 0; i < cacheBlockSize; i++){
 				for(int[] block : cache){
